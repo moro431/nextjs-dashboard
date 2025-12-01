@@ -1,15 +1,12 @@
-import { PrismaClient } from "@prisma/client";
+import 'dotenv/config'
+import { defineConfig, env } from 'prisma/config';
 
-const prismaClientSingleton = () => {
-  return new PrismaClient();
-};
-
-declare const globalThis: {
-  prismaGlobal: ReturnType<typeof prismaClientSingleton>;
-} & typeof global;
-
-const db = globalThis.prismaGlobal ?? prismaClientSingleton();
-
-export default db;
-
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobal = db;
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  migrations: {
+    path: 'prisma/migrations'
+  },
+  datasource: {
+    url: env('DATABASE_URL'),
+  },
+});
