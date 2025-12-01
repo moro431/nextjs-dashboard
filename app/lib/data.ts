@@ -66,7 +66,7 @@ export async function fetchLatestInvoices() {
       include: { customer: true },
     });
 
-    const latest = invoices.map((inv) => ({
+    const latest = invoices.map((inv: { id: string; amount: number; customer: { name: string; imageUrl: string; email: string; }; }) => ({
       id: inv.id,
       name: inv.customer.name,
       image_url: inv.customer.imageUrl,
