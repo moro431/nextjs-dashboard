@@ -1,26 +1,16 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client/edge';
 
+// Création du Pool PostgreSQL
 const connectionString = process.env.POSTGRES_URL!;
+const pool = new Pool({ connectionString });
 
-const pool = new Pool({
-  connectionString,
-});
-
+// Adaptateur Prisma pour PostgreSQL
 const adapter = new PrismaPg(pool);
 
-// Évite de recréer le client en dev
-const globalForPrisma = global as unknown as {
-  prisma: PrismaClient | undefined;
-};
+// Création du client Prisma
+const prisma = new PrismaClient({ adapter });
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    adapter,
-  });
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
+// Export
 export default prisma;
