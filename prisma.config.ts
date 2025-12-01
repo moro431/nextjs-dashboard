@@ -13,6 +13,5 @@ export default defineConfig({
   },
   datasource: {
     url: dbUrl,
-    adapter: new PrismaPg({ connectionString: dbUrl }),
   },
 });
