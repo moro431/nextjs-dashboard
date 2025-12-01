@@ -12,7 +12,8 @@
 //   WHERE invoices.amount = 666;
 //
 
-import { prisma } from '@/app/lib/prisma';
+import prisma from '@/app/lib/prisma';
+
 
 /**
  * listInvoices()
