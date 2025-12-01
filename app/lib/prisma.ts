@@ -1,24 +1,26 @@
-'use server';
-/**
- * Prisma Client Singleton
- * 
- * Crée une instance unique de PrismaClient pour l'application.
- * Ceci évite les fuites mémoire et les multiples connexions.
- */
-
-// Ligne 8 – remplace par ça :
-// Ligne 8-9 : remplace par ça
-import { PrismaClient } from '@prisma/client';  // ← Retour à l'import normal
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import { PrismaClient } from '@prisma/client';
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const connectionString = process.env.POSTGRES_URL!;
+
+const pool = new Pool({
+  connectionString,
+});
+
+const adapter = new PrismaPg(pool);
+
+// Évite de recréer le client en dev
+const globalForPrisma = global as unknown as {
+  prisma: PrismaClient | undefined;
+};
 
 export const prisma =
-  globalForPrisma.prisma ||
+  globalForPrisma.prisma ??
   new PrismaClient({
-    adapter: new PrismaPg({
-      connectionString: process.env.DATABASE_URL,
-    }),
+    adapter,
   });
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
+export default prisma;
