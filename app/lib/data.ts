@@ -104,7 +104,7 @@ export async function fetchCardData() {
     ]);
 
     const paidData = invoicesByStatus.find((row: { status: string; _sum: { amount: number | null; }; }) => row.status === 'paid');
-    const pendingData = invoicesByStatus.find((row) => row.status === 'pending');
+    const pendingData = invoicesByStatus.find((row: { status: string; _sum: { amount: number | null; }; }) => row.status === 'pending');
 
     const numberOfInvoices = invoiceCount ?? 0;
     const numberOfCustomers = customerCount ?? 0;
