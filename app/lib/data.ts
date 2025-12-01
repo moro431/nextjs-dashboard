@@ -226,7 +226,7 @@ export async function fetchFilteredCustomers(query: string) {
       _count: { id: true },
       _sum: { amount: true },
       where: {
-        customerId: { in: customers.map((c) => c.id) },
+        customerId: { in: customers.map((c: { id: string; }) => c.id) },
       },
     });
 
