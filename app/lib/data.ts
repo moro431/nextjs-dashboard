@@ -54,8 +54,9 @@ export async function fetchRevenue() {
     const data = await prisma.revenue.findMany({ orderBy: { month: 'asc' } });
     return data as Revenue[];
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch revenue data.');
+    console.error('Database Error (fetchRevenue):', error);
+    // Fallback en production: éviter de casser le rendu
+    return [] as Revenue[];
   }
 }
 
@@ -88,8 +89,9 @@ export async function fetchLatestInvoices() {
 
     return latest;
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch the latest invoices.');
+    console.error('Database Error (fetchLatestInvoices):', error);
+    // Fallback en production
+    return [];
   }
 }
 
@@ -119,8 +121,14 @@ export async function fetchCardData() {
       totalPendingInvoices,
     };
   } catch (error) {
-    console.error('Database Error:', error);
-    throw new Error('Failed to fetch card data.');
+    console.error('Database Error (fetchCardData):', error);
+    // Fallback en production
+    return {
+      numberOfCustomers: 0,
+      numberOfInvoices: 0,
+      totalPaidInvoices: formatCurrency(0),
+      totalPendingInvoices: formatCurrency(0),
+    };
   }
 }
 
