@@ -68,12 +68,21 @@ export async function fetchLatestInvoices() {
 
     type InvoiceWithCustomer = typeof invoices[number];
 
-    const latest: LatestInvoiceRaw[] = invoices.map((inv: InvoiceWithCustomer) => ({
+    // Define LatestInvoice to match the structure of the mapped object
+    interface LatestInvoice {
+      id: string;
+      name: string;
+      image_url: string;
+      email: string;
+      amount: string; // The amount is formatted as a string
+    }
+
+    const latest: LatestInvoice[] = invoices.map((inv: InvoiceWithCustomer) => ({
       id: inv.id,
       name: inv.customer.name,
       image_url: inv.customer.imageUrl,
       email: inv.customer.email,
-      amount: inv.amount,
+      amount: formatCurrency(inv.amount),
     }));
 
     return latest;
