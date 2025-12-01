@@ -1,5 +1,5 @@
 /**
- * app/lib/data.ts - OPTIMISÉ pour la PERFORMANCE + TypeScript strict compliant
+ * app/lib/data.ts - OPTIMISÉ pour la PERFORMANCE
  *
  * Prisma-based data access helpers. Optimizations:
  * 1. fetchCardData: utilise groupBy au lieu de 2 aggregate séparées (-1 requête DB)
@@ -20,26 +20,9 @@ import { formatCurrency } from './utils';
 
 const ITEMS_PER_PAGE = 6;
 
-// ──────────────────────────────────────────────────────────────
-// Types spécifiques pour les résultats de groupBy (évite les `any`)
-// ──────────────────────────────────────────────────────────────
-
-type InvoiceStatusAggregation = {
-  status: 'paid' | 'pending';
-  _sum: { amount: number | null };
-};
-
-type CustomerInvoiceAggregation = {
-  customerId: string;
-  status: 'paid' | 'pending';
-  _count: { id: number };
-  _sum: { amount: number | null };
-};
-
-// ──────────────────────────────────────────────────────────────
-// Helper partagé pour les filtres de recherche
-// ──────────────────────────────────────────────────────────────
-
+// Optimisation (FR):
+// - Helper pour construire le filtre OR commun aux recherches complexes.
+// - Évite la duplication de logique et facilite la maintenance.
 function buildSearchFilter(query: string) {
   const whereOr: any[] = [
     { customer: { name: { contains: query, mode: 'insensitive' } } },
@@ -65,10 +48,6 @@ function buildSearchFilter(query: string) {
   return whereOr;
 }
 
-// ──────────────────────────────────────────────────────────────
-// Revenue
-// ──────────────────────────────────────────────────────────────
-
 export async function fetchRevenue() {
   try {
     const data = await prisma.revenue.findMany({ orderBy: { month: 'asc' } });
@@ -79,10 +58,6 @@ export async function fetchRevenue() {
   }
 }
 
-// ──────────────────────────────────────────────────────────────
-// Latest Invoices
-// ──────────────────────────────────────────────────────────────
-
 export async function fetchLatestInvoices() {
   try {
     const invoices = await prisma.invoice.findMany({
@@ -91,7 +66,18 @@ export async function fetchLatestInvoices() {
       include: { customer: true },
     });
 
-    const latestInvoices = invoices.map((inv) => ({
+    type InvoiceWithCustomer = typeof invoices[number];
+
+    // Define LatestInvoice to match the structure of the mapped object
+    interface LatestInvoice {
+      id: string;
+      name: string;
+      image_url: string;
+      email: string;
+      amount: string; // The amount is formatted as a string
+    }
+
+    const latest: LatestInvoice[] = invoices.map((inv: InvoiceWithCustomer) => ({
       id: inv.id,
       name: inv.customer.name,
       image_url: inv.customer.imageUrl,
@@ -99,16 +85,12 @@ export async function fetchLatestInvoices() {
       amount: formatCurrency(inv.amount),
     }));
 
-    return latestInvoices;
+    return latest;
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch the latest invoices.');
   }
 }
-
-// ──────────────────────────────────────────────────────────────
-// Card Data (Dashboard summary)
-// ──────────────────────────────────────────────────────────────
 
 export async function fetchCardData() {
   try {
@@ -117,7 +99,6 @@ export async function fetchCardData() {
         by: ['status'],
         _sum: { amount: true },
       }),
-
       prisma.customer.count(),
       prisma.invoice.count(),
     ]);
@@ -142,10 +123,6 @@ export async function fetchCardData() {
   }
 }
 
-// ──────────────────────────────────────────────────────────────
-// Invoices (paginated + filtered)
-// ──────────────────────────────────────────────────────────────
-
 export async function fetchFilteredInvoices(query: string, currentPage: number) {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
@@ -160,7 +137,9 @@ export async function fetchFilteredInvoices(query: string, currentPage: number) 
       take: ITEMS_PER_PAGE,
     });
 
-    const mapped: InvoicesTable[] = invoices.map((inv) => ({
+    type InvoiceWithCustomer = typeof invoices[number];
+
+    const mapped: InvoicesTable[] = invoices.map((inv: InvoiceWithCustomer) => ({
       id: inv.id,
       customer_id: inv.customerId,
       name: inv.customer.name,
@@ -190,10 +169,6 @@ export async function fetchInvoicesPages(query: string) {
   }
 }
 
-// ──────────────────────────────────────────────────────────────
-// Single Invoice
-// ──────────────────────────────────────────────────────────────
-
 export async function fetchInvoiceById(id: string) {
   try {
     const inv = await prisma.invoice.findUnique({
@@ -216,10 +191,6 @@ export async function fetchInvoiceById(id: string) {
     throw new Error('Failed to fetch invoice.');
   }
 }
-
-// ──────────────────────────────────────────────────────────────
-// Customers
-// ──────────────────────────────────────────────────────────────
 
 export async function fetchCustomers() {
   try {
@@ -259,15 +230,10 @@ export async function fetchFilteredCustomers(query: string) {
       },
     });
 
-    // Construction d'une map pour accès rapide
-    const aggMap: Record<string, Record<'paid' | 'pending', { count: number; sum: number }>> = {};
-
+    const aggMap: Record<string, Record<string, any>> = {};
     invoiceAggs.forEach((agg) => {
       if (!aggMap[agg.customerId]) {
-        aggMap[agg.customerId] = {
-          paid: { count: 0, sum: 0 },
-          pending: { count: 0, sum: 0 },
-        };
+        aggMap[agg.customerId] = { paid: { count: 0, sum: 0 }, pending: { count: 0, sum: 0 } };
       }
       aggMap[agg.customerId][agg.status] = {
         count: agg._count.id,
@@ -275,12 +241,13 @@ export async function fetchFilteredCustomers(query: string) {
       };
     });
 
-    const mapped: CustomersTableType[] = customers.map((c) => {
-      const aggs = aggMap[c.id] ?? { paid: { count: 0, sum: 0 }, pending: { count: 0, sum: 0 } };
+    type CustomerWithImage = typeof customers[number];
 
-      const total_invoices = aggs.paid.count + aggs.pending.count;
-      const total_paid = aggs.paid.sum;
-      const total_pending = aggs.pending.sum;
+    const mapped: CustomersTableType[] = customers.map((c: CustomerWithImage) => {
+      const aggs = aggMap[c.id] || { paid: { count: 0, sum: 0 }, pending: { count: 0, sum: 0 } };
+      const total_invoices = (aggs.paid.count || 0) + (aggs.pending.count || 0);
+      const total_paid = aggs.paid.sum || 0;
+      const total_pending = aggs.pending.sum || 0;
 
       return {
         id: c.id,
@@ -288,8 +255,8 @@ export async function fetchFilteredCustomers(query: string) {
         email: c.email,
         image_url: c.imageUrl,
         total_invoices,
-        total_pending,
-        total_paid,
+        total_pending: total_pending,
+        total_paid: total_paid,
       };
     });
 
