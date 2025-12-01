@@ -7,7 +7,7 @@
  * 3. buildSearchFilter: helper partagé pour éviter la duplication de logique
  */
 
-import prisma from './prisma';
+import { prisma } from './prisma';
 
 import {
   CustomerField,
