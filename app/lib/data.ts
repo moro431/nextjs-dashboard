@@ -66,13 +66,15 @@ export async function fetchLatestInvoices() {
       include: { customer: true },
     });
 
-    const latest = invoices.map((inv: { id: string; amount: number; customer: { name: string; imageUrl: string; email: string; }; }) => ({
+    type InvoiceWithCustomer = typeof invoices[number];
+
+    const latest: LatestInvoiceRaw[] = invoices.map((inv: InvoiceWithCustomer) => ({
       id: inv.id,
       name: inv.customer.name,
       image_url: inv.customer.imageUrl,
       email: inv.customer.email,
-      amount: formatCurrency(inv.amount),
-    })) as LatestInvoiceRaw[] | any;
+      amount: inv.amount,
+    }));
 
     return latest;
   } catch (error) {
@@ -82,13 +84,8 @@ export async function fetchLatestInvoices() {
 }
 
 export async function fetchCardData() {
-  // Important (OPTIMISATION):
-  // - AVANT: 4 requêtes = invoiceCount, customerCount, paidAgg, pendingAgg
-  // - APRÈS: 3 requêtes = groupBy('status') combine les 2 aggregations en 1
-  // - Réduit le nombre de round-trips à la BDD de 4 à 3
   try {
     const [invoicesByStatus, customerCount, invoiceCount] = await Promise.all([
-      // Agrégation unique: récupère paid ET pending en une seule requête
       prisma.invoice.groupBy({
         by: ['status'],
         _sum: { amount: true },
@@ -97,9 +94,8 @@ export async function fetchCardData() {
       prisma.invoice.count(),
     ]);
 
-    // Extraire les montants du groupBy
-    const paidData = invoicesByStatus.find((row: { status: string; _sum: { amount: number | null; }; }) => row.status === 'paid');
-    const pendingData = invoicesByStatus.find((row: { status: string; _sum: { amount: number | null; }; }) => row.status === 'pending');
+    const paidData = invoicesByStatus.find((row) => row.status === 'paid');
+    const pendingData = invoicesByStatus.find((row) => row.status === 'pending');
 
     const numberOfInvoices = invoiceCount ?? 0;
     const numberOfCustomers = customerCount ?? 0;
@@ -132,7 +128,9 @@ export async function fetchFilteredInvoices(query: string, currentPage: number) 
       take: ITEMS_PER_PAGE,
     });
 
-    const mapped = invoices.map((inv) => ({
+    type InvoiceWithCustomer = typeof invoices[number];
+
+    const mapped: InvoicesTable[] = invoices.map((inv: InvoiceWithCustomer) => ({
       id: inv.id,
       customer_id: inv.customerId,
       name: inv.customer.name,
@@ -141,7 +139,7 @@ export async function fetchFilteredInvoices(query: string, currentPage: number) 
       date: inv.date.toISOString(),
       amount: inv.amount,
       status: inv.status as 'pending' | 'paid',
-    })) as InvoicesTable[];
+    }));
 
     return mapped;
   } catch (error) {
@@ -200,12 +198,7 @@ export async function fetchCustomers() {
 }
 
 export async function fetchFilteredCustomers(query: string) {
-  // Important (OPTIMISATION):
-  // - AVANT: include: { invoices: true } chargeait TOUTES les factures en mémoire et agrégait en JS
-  // - APRÈS: groupBy côté DB agrège les données, puis on les mappe
-  // - Amélioration: réduit l'utilisation mémoire et le temps de traitement pour les clients avec beaucoup de factures
   try {
-    // 1. Récupère les clients correspondants
     const customers = await prisma.customer.findMany({
       where: {
         OR: [
@@ -219,7 +212,6 @@ export async function fetchFilteredCustomers(query: string) {
 
     if (customers.length === 0) return [];
 
-    // 2. Récupère les agrégations par client en une seule requête (optimisé!)
     const invoiceAggs = await prisma.invoice.groupBy({
       by: ['customerId', 'status'],
       _count: { id: true },
@@ -229,7 +221,6 @@ export async function fetchFilteredCustomers(query: string) {
       },
     });
 
-    // 3. Construit un map pour accès rapide
     const aggMap: Record<string, Record<string, any>> = {};
     invoiceAggs.forEach((agg) => {
       if (!aggMap[agg.customerId]) {
@@ -241,8 +232,9 @@ export async function fetchFilteredCustomers(query: string) {
       };
     });
 
-    // 4. Mappe les clients avec les agrégations
-    const mapped = customers.map((c) => {
+    type CustomerWithImage = typeof customers[number];
+
+    const mapped: CustomersTableType[] = customers.map((c: CustomerWithImage) => {
       const aggs = aggMap[c.id] || { paid: { count: 0, sum: 0 }, pending: { count: 0, sum: 0 } };
       const total_invoices = (aggs.paid.count || 0) + (aggs.pending.count || 0);
       const total_paid = aggs.paid.sum || 0;
@@ -254,9 +246,9 @@ export async function fetchFilteredCustomers(query: string) {
         email: c.email,
         image_url: c.imageUrl,
         total_invoices,
-        total_pending: formatCurrency(total_pending),
-        total_paid: formatCurrency(total_paid),
-      } as unknown as CustomersTableType | any;
+        total_pending: total_pending,
+        total_paid: total_paid,
+      };
     });
 
     return mapped;
