@@ -5,7 +5,8 @@
  * Ceci évite les fuites mémoire et les multiples connexions.
  */
 
-import { PrismaClient } from '@prisma/client';
+// Ligne 8 – remplace par ça :
+import { PrismaClient } from '@prisma/client/index';  // ← /index à la fin
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };

@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "build": "prisma generate --skip-generate || true && next build",
+    "build": "next build",
     "dev": "next dev --turbopack",
     "start": "next start"
   },
