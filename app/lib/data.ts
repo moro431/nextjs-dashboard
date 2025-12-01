@@ -231,7 +231,7 @@ export async function fetchFilteredCustomers(query: string) {
     });
 
     const aggMap: Record<string, Record<string, any>> = {};
-    invoiceAggs.forEach((agg) => {
+    invoiceAggs.forEach((agg: { customerId: string; status: string; _count: { id: number; }; _sum: { amount: number | null; }; }) => {
       if (!aggMap[agg.customerId]) {
         aggMap[agg.customerId] = { paid: { count: 0, sum: 0 }, pending: { count: 0, sum: 0 } };
       }
