@@ -103,7 +103,7 @@ export async function fetchCardData() {
       prisma.invoice.count(),
     ]);
 
-    const paidData = invoicesByStatus.find((row) => row.status === 'paid');
+    const paidData = invoicesByStatus.find((row: { status: string; _sum: { amount: number | null; }; }) => row.status === 'paid');
     const pendingData = invoicesByStatus.find((row) => row.status === 'pending');
 
     const numberOfInvoices = invoiceCount ?? 0;
