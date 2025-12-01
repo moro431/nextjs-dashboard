@@ -16,6 +16,7 @@
     "dotenv": "^17.2.3",
     "next": "latest",
     "next-auth": "5.0.0-beta.25",
+    "pg": "^8.16.3",
     "postcss": "8.5.1",
     "postgres": "^3.4.6",
     "react": "latest",
