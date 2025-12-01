@@ -1,3 +1,4 @@
+'use server';
 /**
  * Prisma Client Singleton
  * 
@@ -6,7 +7,8 @@
  */
 
 // Ligne 8 – remplace par ça :
-import { PrismaClient } from '@prisma/client/index';  // ← /index à la fin
+// Ligne 8-9 : remplace par ça
+import { PrismaClient } from '@prisma/client';  // ← Retour à l'import normal
 import { PrismaPg } from '@prisma/adapter-pg';
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
